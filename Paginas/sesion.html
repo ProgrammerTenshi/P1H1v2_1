@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Café Sol y Luna</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module" src="/firebase.js"></script>
+</head>
+<body class="flex flex-col h-full bg-amber-50">
+    <div id="navbar"></div>
+
+    <main class="flex-grow flex items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md mx-auto">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold text-amber-800">Iniciar Sesión</h2>
+                <p class="text-amber-600 mt-2">Por favor, ingrese sus credenciales</p>
+            </div>
+
+            <form id="login-form" class="space-y-6">
+                <div>
+                    <label for="email" class="block text-amber-700 text-sm font-bold mb-2">
+                        Correo Electrónico
+                    </label>
+                    <input type="email" id="email" name="email" placeholder="correo@email.com" class="shadow appearance-none border rounded w-full py-2.5 px-3 text-amber-700 leading-tight focus:outline-none focus:shadow-outline focus:border-amber-500 transition-colors" required>
+                </div>
+
+                <div>
+                    <label for="password" class="block text-amber-700 text-sm font-bold mb-2">
+                        Contraseña
+                    </label>
+                    <div class="relative">
+                        <input type="password" id="password" name="password" placeholder="************" class="shadow appearance-none border rounded w-full py-2.5 px-3 text-amber-700 leading-tight focus:outline-none focus:shadow-outline focus:border-amber-500 transition-colors" required>
+                        <button type="button" onclick="togglePassword()" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-amber-600 hover:text-amber-800 focus:outline-none">
+                            <span id="showIcon" class="block">👁️</span>
+                            <span id="hideIcon" class="hidden">🔒</span>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-amber-600 text-amber-50 font-bold py-2.5 px-4 rounded hover:bg-amber-700 focus:outline-none focus:shadow-outline transition-colors duration-200">
+                    Iniciar Sesión
+                </button>
+            </form>
+
+            <div class="mt-6 text-center">
+                <p class="text-amber-700">¿No tienes una cuenta?</p>
+                <a href="#" data-page="Registro.html" class="text-amber-600 hover:text-amber-800 font-medium">Regístrate aquí</a>
+            </div>
+        </div>
+    </main>
+
+    <div id="footer"></div>
+
+    <script>
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const showIcon = document.getElementById('showIcon');
+            const hideIcon = document.getElementById('hideIcon');
+
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                showIcon.classList.add('hidden');
+                hideIcon.classList.remove('hidden');
+                showIcon.classList.remove('block');
+                hideIcon.classList.add('block');
+            } else {
+                passwordInput.type = 'password';
+                showIcon.classList.remove('hidden');
+                hideIcon.classList.add('hidden');
+                showIcon.classList.add('block');
+                hideIcon.classList.remove('block');
+            }
+        }
+
+        fetch('/navbar.html')
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('navbar').insertAdjacentHTML('afterbegin', data);
+
+                const menuToggle = document.getElementById('menu-toggle');
+                const mobileMenu = document.getElementById('mobile-menu');
+
+                if (menuToggle && mobileMenu) {
+                    menuToggle.addEventListener('click', () => {
+                        mobileMenu.classList.toggle('hidden');
+                    });
+                }
+            })
+            .catch(error => console.error('Error al cargar el navbar:', error));
+
+        fetch('/footer.html')
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('footer').insertAdjacentHTML('afterbegin', data);
+            })
+            .catch(error => console.error('Error loading footer:', error));
+    </script>
+
+    <script type="module">
+        import { getFirestore, doc, collection, getDocs, query, where, updateDoc } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
+        
+        const db = getFirestore();
+
+        async function getUserByEmail(email, password) {
+            const usersRef = collection(db, "usuario");
+            const q = query(usersRef, where("email", "==", email), where("password", "==", password));
+            const querySnapshot = await getDocs(q);
+            
+            if (!querySnapshot.empty) {
+                const userData = querySnapshot.docs[0].data();
+                return {
+                    idusuario: querySnapshot.docs[0].id,
+                    nombre: userData.usuario,
+                    email: userData.email
+                };
+            } else {
+                throw new Error('No se encontró un usuario con este correo electrónico.');
+            }
+        }
+
+        async function updateSession(idusuario, nombre, email) {
+            const sessionRef = doc(db, "ususesion", "XqbwB2YMzh8qAhGGp8YM");
+            try {
+                await updateDoc(sessionRef, {
+                    idusuario: idusuario,
+                    nombre: nombre,
+                    email: email
+                });
+                window.location.href = '/Paginas/catalogo.html.html';
+            } catch (error) {
+                console.error("Error actualizando el documento de sesión: ", error);
+            }
+        }
+
+        document.getElementById('login-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const user = await getUserByEmail(email, password);
+                await updateSession(user.idusuario, user.nombre, user.email);
+            } catch (error) {
+                alert("Error: Correo electrónico o contraseña incorrectos");
+            }
+        });
+    </script>
+</body>
+</html>
